@@ -28,3 +28,21 @@ thread-scoped = "1.0.2"
 
 [dev-dependencies]
 env_logger = "0.6.0"
+
+[features]
+abi-7-9 = ["fuse-abi/abi-7-9"]
+abi-7-10 = ["abi-7-9", "fuse-abi/abi-7-10"]
+abi-7-11 = ["abi-7-10", "fuse-abi/abi-7-11"]
+abi-7-12 = ["abi-7-11", "fuse-abi/abi-7-12"]
+abi-7-13 = ["abi-7-12", "fuse-abi/abi-7-13"]
+abi-7-14 = ["abi-7-13", "fuse-abi/abi-7-14"]
+abi-7-15 = ["abi-7-14", "fuse-abi/abi-7-15"]
+abi-7-16 = ["abi-7-15", "fuse-abi/abi-7-16"]
+abi-7-17 = ["abi-7-16", "fuse-abi/abi-7-17"]
+abi-7-18 = ["abi-7-17", "fuse-abi/abi-7-18"]
+abi-7-19 = ["abi-7-18", "fuse-abi/abi-7-19"]
+abi-7-20 = ["abi-7-19", "fuse-abi/abi-7-20"]
+abi-7-21 = ["abi-7-20", "fuse-abi/abi-7-21"]
+abi-7-22 = ["abi-7-21", "fuse-abi/abi-7-22"]
+abi-7-23 = ["abi-7-22", "fuse-abi/abi-7-23"]
+abi-7-24 = ["abi-7-23", "fuse-abi/abi-7-24"]

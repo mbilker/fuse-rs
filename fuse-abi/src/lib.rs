@@ -233,7 +233,7 @@ pub mod consts {
 pub struct InvalidOpcodeError;
 
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 #[allow(non_camel_case_types)]
 pub enum fuse_opcode {
     FUSE_LOOKUP = 1,
@@ -272,16 +272,14 @@ pub enum fuse_opcode {
     FUSE_INTERRUPT = 36,
     FUSE_BMAP = 37,
     FUSE_DESTROY = 38,
-    #[cfg(feature = "abi-7-11")]
     FUSE_IOCTL = 39,
-    #[cfg(feature = "abi-7-11")]
     FUSE_POLL = 40,
-    #[cfg(feature = "abi-7-15")]
     FUSE_NOTIFY_REPLY = 41,
-    #[cfg(feature = "abi-7-16")]
     FUSE_BATCH_FORGET = 42,
-    #[cfg(feature = "abi-7-19")]
     FUSE_FALLOCATE = 43,
+    FUSE_READDIRPLUS = 44,
+    FUSE_RENAME2 = 45,
+    FUSE_LSEEK = 46,
 
     #[cfg(target_os = "macos")]
     FUSE_SETVOLNAME = 61,
@@ -290,7 +288,6 @@ pub enum fuse_opcode {
     #[cfg(target_os = "macos")]
     FUSE_EXCHANGE = 63,
 
-    #[cfg(feature = "abi-7-12")]
     CUSE_INIT = 4096,
 }
 
@@ -335,16 +332,14 @@ impl TryFrom<u32> for fuse_opcode {
             36 => Ok(fuse_opcode::FUSE_INTERRUPT),
             37 => Ok(fuse_opcode::FUSE_BMAP),
             38 => Ok(fuse_opcode::FUSE_DESTROY),
-            #[cfg(feature = "abi-7-11")]
             39 => Ok(fuse_opcode::FUSE_IOCTL),
-            #[cfg(feature = "abi-7-11")]
             40 => Ok(fuse_opcode::FUSE_POLL),
-            #[cfg(feature = "abi-7-15")]
             41 => Ok(fuse_opcode::FUSE_NOTIFY_REPLY),
-            #[cfg(feature = "abi-7-16")]
             42 => Ok(fuse_opcode::FUSE_BATCH_FORGET),
-            #[cfg(feature = "abi-7-19")]
             43 => Ok(fuse_opcode::FUSE_FALLOCATE),
+            44 => Ok(fuse_opcode::FUSE_READDIRPLUS),
+            45 => Ok(fuse_opcode::FUSE_RENAME2),
+            46 => Ok(fuse_opcode::FUSE_LSEEK),
 
             #[cfg(target_os = "macos")]
             61 => Ok(fuse_opcode::FUSE_SETVOLNAME),
@@ -830,11 +825,11 @@ pub struct fuse_notify_poll_wakeup_out {
 #[repr(C)]
 #[derive(Debug)]
 pub struct fuse_fallocate_in {
-    fh: u64,
-    offset: u64,
-    length: u64,
-    mode: u32,
-    padding: u32,
+    pub fh: u64,
+    pub offset: u64,
+    pub length: u64,
+    pub mode: u32,
+    pub padding: u32,
 }
 
 #[repr(C)]

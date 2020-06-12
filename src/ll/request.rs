@@ -153,28 +153,28 @@ pub enum Operation<'a> {
         arg: &'a fuse_bmap_in,
     },
     Destroy,
-    // TODO: FUSE_IOCTL since ABI 7.11
-    // IoCtl {
-    //     arg: &'a fuse_ioctl_in,
-    //     data: &'a [u8],
-    // },
-    // TODO: FUSE_POLL since ABI 7.11
-    // Poll {
-    //     arg: &'a fuse_poll_in,
-    // },
-    // TODO: FUSE_NOTIFY_REPLY since ABI 7.15
-    // NotifyReply {
-    //     data: &'a [u8],
-    // },
-    // TODO: FUSE_BATCH_FORGET since ABI 7.16
-    // BatchForget {
-    //     arg: &'a fuse_forget_in,
-    //     nodes: &'a [fuse_forget_one],
-    // },
-    // TODO: FUSE_FALLOCATE since ABI 7.19
-    // FAllocate {
-    //     arg: &'a fuse_fallocate_in,
-    // },
+    #[cfg(feature = "abi-7-11")]
+    IoCtl {
+        arg: &'a fuse_ioctl_in,
+        data: &'a [u8],
+    },
+    #[cfg(feature = "abi-7-11")]
+    Poll {
+        arg: &'a fuse_poll_in,
+    },
+    #[cfg(feature = "abi-7-15")]
+    NotifyReply {
+        data: &'a [u8],
+    },
+    #[cfg(feature = "abi-7-16")]
+    BatchForget {
+        arg: &'a fuse_forget_in,
+        nodes: &'a [fuse_forget_one],
+    },
+    #[cfg(feature = "abi-7-19")]
+    FAllocate {
+        arg: &'a fuse_fallocate_in,
+    },
 
     #[cfg(target_os = "macos")]
     SetVolName {
@@ -189,10 +189,15 @@ pub enum Operation<'a> {
         newname: &'a OsStr,
     },
 
-    // TODO: CUSE_INIT since ABI 7.12
-    // CuseInit {
-    //     arg: &'a fuse_init_in,
-    // },
+    #[cfg(feature = "abi-7-12")]
+    CuseInit {
+        arg: &'a fuse_init_in,
+    },
+
+    /// Catch-all for any unsupported opcodes
+    Unsupported {
+        opcode: fuse_opcode,
+    },
 }
 
 impl<'a> fmt::Display for Operation<'a> {
@@ -234,6 +239,16 @@ impl<'a> fmt::Display for Operation<'a> {
             Operation::Interrupt { arg } => write!(f, "INTERRUPT unique {}", arg.unique),
             Operation::BMap { arg } => write!(f, "BMAP blocksize {}, ids {}", arg.blocksize, arg.block),
             Operation::Destroy => write!(f, "DESTROY"),
+            #[cfg(feature = "abi-7-11")]
+            Operation::IoCtl { arg, .. } => write!(f, "IOCTL fh {}, ioctl flags {:#x}, cmd {}, arg {}, in size {}, out size {}", arg.fh, arg.flags, arg.cmd, arg.arg, arg.in_size, arg.out_size),
+            #[cfg(feature = "abi-7-11")]
+            Operation::Poll { arg } => write!(f, "POLL fh {}, kh {}, poll flags {:#x}", arg.fh, arg.kh, arg.flags),
+            #[cfg(feature = "abi-7-15")]
+            Operation::NotifyReply { .. } => write!(f, "NOTIFY_REPLY"),
+            #[cfg(feature = "abi-7-16")]
+            Operation::BatchForget { arg, .. } => write!(f, "BATCH_FORGET nlookup {}", arg.nlookup),
+            #[cfg(feature = "abi-7-19")]
+            Operation::FAllocate { arg } => write!(f, "FALLOCATE fh {}, offset {}, length {}, mode {}, padding {}", arg.fh, arg.offset, arg.length, arg.mode, arg.padding),
 
             #[cfg(target_os = "macos")]
             Operation::SetVolName { name } => write!(f, "SETVOLNAME name {:?}", name),
@@ -241,6 +256,11 @@ impl<'a> fmt::Display for Operation<'a> {
             Operation::GetXTimes => write!(f, "GETXTIMES"),
             #[cfg(target_os = "macos")]
             Operation::Exchange { arg, oldname, newname } => write!(f, "EXCHANGE olddir {:#018x}, oldname {:?}, newdir {:#018x}, newname {:?}, options {:#x}", arg.olddir, oldname, arg.newdir, newname, arg.options),
+
+            #[cfg(feature = "abi-7-12")]
+            Operation::CuseInit { arg } => write!(f, "CUSE_INIT kernel ABI {}.{}, flags {:#x}, max readahead {}", arg.major, arg.minor, arg.flags, arg.max_readahead),
+
+            Operation::Unsupported { opcode } => write!(f, "Unsupported opcode: {:?}", opcode),
         }
     }
 }
@@ -322,6 +342,22 @@ impl<'a> Operation<'a> {
                 fuse_opcode::FUSE_INTERRUPT => Operation::Interrupt { arg: data.fetch()? },
                 fuse_opcode::FUSE_BMAP => Operation::BMap { arg: data.fetch()? },
                 fuse_opcode::FUSE_DESTROY => Operation::Destroy,
+                #[cfg(feature = "abi-7-11")]
+                fuse_opcode::FUSE_IOCTL => Operation::IoCtl {
+                    arg: data.fetch()?,
+                    data: data.fetch_all(),
+                },
+                #[cfg(feature = "abi-7-11")]
+                fuse_opcode::FUSE_POLL => Operation::Poll { arg: data.fetch()? },
+                #[cfg(feature = "abi-7-15")]
+                fuse_opcode::FUSE_NOTIFY_REPLY => Operation::NotifyReply { data: data.fetch_all() },
+                #[cfg(feature = "abi-7-16")]
+                fuse_opcode::FUSE_BATCH_FORGET => Operation::BatchForget {
+                    arg: data.fetch()?,
+                    nodes: data.fetch_array()?,
+                },
+                #[cfg(feature = "abi-7-19")]
+                fuse_opcode::FUSE_FALLOCATE => Operation::FAllocate { arg: data.fetch()? },
 
                 #[cfg(target_os = "macos")]
                 fuse_opcode::FUSE_SETVOLNAME => Operation::SetVolName {
@@ -335,6 +371,13 @@ impl<'a> Operation<'a> {
                     oldname: data.fetch_str()?,
                     newname: data.fetch_str()?,
                 },
+
+                #[cfg(feature = "abi-7-12")]
+                fuse_opcode::CUSE_INIT => Operation::CuseInit {
+                    arg: data.fetch()?,
+                },
+
+                opcode => Operation::Unsupported { opcode: *opcode },
             })
         }
     }

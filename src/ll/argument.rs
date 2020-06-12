@@ -6,6 +6,8 @@
 use std::ffi::OsStr;
 use std::mem;
 use std::os::unix::ffi::OsStrExt;
+#[cfg(feature = "abi-7-16")]
+use std::slice;
 
 
 /// An iterator that can be used to fetch typed arguments from a byte slice.
@@ -45,6 +47,19 @@ impl<'a> ArgumentIterator<'a> {
         let len = mem::size_of::<T>();
         let bytes = self.fetch_bytes(len)?;
         (bytes.as_ptr() as *const T).as_ref()
+    }
+
+    /// Fetch an array of a typed argument. Returns `None` if the data is not a multiple of the
+    /// size of the type. This function is unsafe because there is no guarantee that the data
+    /// actually contains the type T.
+    #[cfg(feature = "abi-7-16")]
+    pub unsafe fn fetch_array<T>(&mut self) -> Option<&'a [T]> {
+        let type_len = mem::size_of::<T>();
+        if self.data.len() == 0 || self.data.len() % type_len != 0 {
+            return None;
+        }
+        let bytes = self.fetch_all();
+        Some(slice::from_raw_parts(bytes.as_ptr() as *const T, bytes.len() / type_len))
     }
 
     /// Fetch a (zero-terminated) string (can be non-utf8). Returns `None` if there's not enough

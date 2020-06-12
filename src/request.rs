@@ -89,7 +89,12 @@ impl<'a> Request<'a> {
                     minor: FUSE_KERNEL_MINOR_VERSION,
                     max_readahead: arg.max_readahead,       // accept any readahead size
                     flags: arg.flags & INIT_FLAGS,          // use features given in INIT_FLAGS and reported as capable
+                    #[cfg(not(feature = "abi-7-13"))]
                     unused: 0,
+                    #[cfg(feature = "abi-7-13")]
+                    max_background: 0,
+                    #[cfg(feature = "abi-7-13")]
+                    congestion_threshold: 0,
                     max_write: MAX_WRITE_SIZE as u32,       // use a max write size that fits into the session's buffer
                 };
                 debug!("INIT response: ABI {}.{}, flags {:#x}, max readahead {}, max write {}", init.major, init.minor, init.flags, init.max_readahead, init.max_write);
@@ -292,6 +297,27 @@ impl<'a> Request<'a> {
             ll::Operation::BMap { arg } => {
                 se.filesystem.bmap(self, self.request.nodeid(), arg.blocksize, arg.block, self.reply());
             }
+            // TODO: implement
+            #[cfg(feature = "abi-7-11")]
+            ll::Operation::IoCtl { .. } |
+            ll::Operation::Poll { .. } => {
+                self.reply::<ReplyEmpty>().error(ENOSYS);
+            }
+            // TODO: implement
+            #[cfg(feature = "abi-7-15")]
+            ll::Operation::NotifyReply { .. } => {
+                self.reply::<ReplyEmpty>().error(ENOSYS);
+            }
+            // TODO: implement
+            #[cfg(feature = "abi-7-16")]
+            ll::Operation::BatchForget { .. } => {
+                self.reply::<ReplyEmpty>().error(ENOSYS);
+            }
+            // TODO: implement
+            #[cfg(feature = "abi-7-19")]
+            ll::Operation::FAllocate { .. } => {
+                self.reply::<ReplyEmpty>().error(ENOSYS);
+            }
 
             #[cfg(target_os = "macos")]
             ll::Operation::SetVolName { name } => {
@@ -304,6 +330,17 @@ impl<'a> Request<'a> {
             #[cfg(target_os = "macos")]
             ll::Operation::Exchange { arg, oldname, newname } => {
                 se.filesystem.exchange(self, arg.olddir, &oldname, arg.newdir, &newname, arg.options, self.reply());
+            }
+
+            // TODO: implement
+            #[cfg(feature = "abi-7-12")]
+            ll::Operation::CuseInit { .. } => {
+                self.reply::<ReplyEmpty>().error(ENOSYS);
+            }
+
+            ll::Operation::Unsupported { opcode } => {
+                error!("Unsupported opcode: {:?}", opcode);
+                self.reply::<ReplyEmpty>().error(ENOSYS);
             }
         }
     }
